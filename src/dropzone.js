@@ -1409,6 +1409,7 @@ export default class Dropzone extends Emitter {
     let formData = new FormData();
 
     // Adding all @options parameters
+    let additionalParamsPromise = Promise.resolve();
     if (this.options.params) {
       let additionalParams = this.options.params;
       if (typeof additionalParams === "function") {
@@ -1419,40 +1420,48 @@ export default class Dropzone extends Emitter {
           files[0].upload.chunked ? this._getChunk(files[0], xhr) : null
         );
       }
+      additionalParamsPromise = additionalParams instanceof Promise ?
+        additionalParams : Promise.resolve(additionalParams);
+    }
 
-      for (let key in additionalParams) {
-        let value = additionalParams[key];
-        if (Array.isArray(value)) {
-          // The additional parameter contains an array,
-          // so lets iterate over it to attach each value
-          // individually.
-          for (let i = 0; i < value.length; i++) {
-            formData.append(key, value[i]);
+
+
+    additionalParamsPromise.then((additionalParams) => {
+      if (this.options.params) {
+        for (let key in additionalParams) {
+          let value = additionalParams[key];
+          if (Array.isArray(value)) {
+            // The additional parameter contains an array,
+            // so lets iterate over it to attach each value
+            // individually.
+            for (let i = 0; i < value.length; i++) {
+              formData.append(key, value[i]);
+            }
+          } else {
+            formData.append(key, value);
           }
-        } else {
-          formData.append(key, value);
         }
       }
-    }
 
-    // Let the user add additional data if necessary
-    for (let file of files) {
-      this.emit("sending", file, xhr, formData);
-    }
-    if (this.options.uploadMultiple) {
-      this.emit("sendingmultiple", files, xhr, formData);
-    }
+      // Let the user add additional data if necessary
+      for (let file of files) {
+        this.emit("sending", file, xhr, formData);
+      }
+      if (this.options.uploadMultiple) {
+        this.emit("sendingmultiple", files, xhr, formData);
+      }
 
-    this._addFormElementData(formData);
+      this._addFormElementData(formData);
 
-    // Finally add the files
-    // Has to be last because some servers (eg: S3) expect the file to be the last parameter
-    for (let i = 0; i < dataBlocks.length; i++) {
-      let dataBlock = dataBlocks[i];
-      formData.append(dataBlock.name, dataBlock.data, dataBlock.filename);
-    }
+      // Finally add the files
+      // Has to be last because some servers (eg: S3) expect the file to be the last parameter
+      for (let i = 0; i < dataBlocks.length; i++) {
+        let dataBlock = dataBlocks[i];
+        formData.append(dataBlock.name, dataBlock.data, dataBlock.filename);
+      }
 
-    this.submitRequest(xhr, formData, files);
+      this.submitRequest(xhr, formData, files);
+    })
   }
 
   // Transforms all files with this.options.transformFile and invokes done with the transformed files when done.
