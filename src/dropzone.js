@@ -1300,8 +1300,12 @@ export default class Dropzone extends Emitter {
           }
 
           if (allFinished) {
-            this.options.chunksUploaded(file, () => {
-              this._finished(files, "", null);
+            this.options.chunksUploaded(file, (errMessage) => {
+              if (errMessage) {
+                this._errorProcessing([file], errMessage)
+              } else {
+                this._finished(files, "", null)
+              }
             });
           }
         };
